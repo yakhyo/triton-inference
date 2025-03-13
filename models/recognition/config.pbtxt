@@ -1,0 +1,25 @@
+name: "recognition"
+platform: "onnxruntime_onnx"
+max_batch_size: 8
+
+input [
+  {
+    name: "input"
+    data_type: TYPE_FP32
+    dims: [3, 112, 112]  # Adjust based on your model
+  }
+]
+
+output [
+  {
+    name: "output"
+    data_type: TYPE_FP32
+    dims: [512]  # Adjust to your embedding size
+  }
+]
+
+dynamic_batching {
+  max_queue_delay_microseconds: 500
+}
+
+instance_group [{ kind: KIND_GPU }]
