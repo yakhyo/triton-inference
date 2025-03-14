@@ -1,24 +1,56 @@
 name: "detection"
 platform: "onnxruntime_onnx"
-max_batch_size: 8  # supports dynamic batching now
+max_batch_size: 32  # Allow batching up to 32 images per request
 
 input [
   {
     name: "input"
     data_type: TYPE_FP32
-    dims: [3, 640, 640]
+    dims: [3, 640, 640]  # Model expects (C, H, W)
+  }
+]
+output [
+  {
+    name: "loc"
+    data_type: TYPE_FP32
+    dims: [16800, 4]  # Fix shape: Keep 16800 fixed as per the ONNX model output
+  },
+  {
+    name: "conf"
+    data_type: TYPE_FP32
+    dims: [16800, 2]  # Keep confidence scores consistent
+  },
+  {
+    name: "landmarks"
+    data_type: TYPE_FP32
+    dims: [16800, 10]  # Keep landmark predictions consistent
   }
 ]
 
-output [
-  { name: "loc", data_type: TYPE_FP32, dims: [-1, 4] },
-  { name: "conf", data_type: TYPE_FP32, dims: [-1, 2] },
-  { name: "landmarks", data_type: TYPE_FP32, dims: [-1, 10] }
+instance_group [
+  {
+    kind: KIND_GPU  # Run on GPU
+  }
 ]
 
 dynamic_batching {
-  preferred_batch_size: [1, 4, 8, 16]
-  max_queue_delay_microseconds: 500
+  preferred_batch_size: [4, 8, 16]  # Preferred batch sizes for efficiency
+  max_queue_delay_microseconds: 5000  # Wait up to 5ms to batch requests
 }
 
-instance_group [{ kind: KIND_GPU }]
+optimization {
+  input_pinned_memory {
+    enable: true
+  }
+  output_pinned_memory {
+    enable: true
+  }
+  execution_accelerators {
+    gpu_execution_accelerator : [
+      {
+        name : "tensorrt"
+        parameters { key: "precision_mode" value: "FP16" }  # Run inference in FP16 for better performance
+      }
+    ]
+  }
+}

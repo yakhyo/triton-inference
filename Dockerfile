@@ -1,5 +1,5 @@
 # Use NVIDIA Triton Server as the base image
-FROM nvcr.io/nvidia/tritonserver:latest
+FROM nvcr.io/nvidia/tritonserver:24.01-py3
 
 # Set working directory
 WORKDIR /workspace
@@ -8,8 +8,8 @@ WORKDIR /workspace
 COPY models /models
 
 # Copy Python inference scripts and requirements
-COPY inference.py /workspace/inference.py
-COPY pipeline.py /workspace/pipeline.py
+COPY trt_detection.py /workspace/trt_detection.py
+COPY trt_recognition.py /workspace/trt_recognition.py
 COPY requirements.txt /workspace/requirements.txt
 
 # Install Python dependencies (if needed)

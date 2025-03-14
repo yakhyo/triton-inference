@@ -1,25 +1,46 @@
 name: "recognition"
 platform: "onnxruntime_onnx"
-max_batch_size: 8
+max_batch_size: 64  # Allows batching up to 64 images per request
 
 input [
   {
     name: "input"
     data_type: TYPE_FP32
-    dims: [3, 112, 112]  # Adjust based on your model
+    dims: [3, 112, 112]  # Model expects (C, H, W)
+  }
+]
+output [
+  {
+    name: "output"  # Face embedding vector
+    data_type: TYPE_FP32
+    dims: [512]  # 512-dimensional embedding vector
   }
 ]
 
-output [
+instance_group [
   {
-    name: "output"
-    data_type: TYPE_FP32
-    dims: [512]  # Adjust to your embedding size
+    kind: KIND_GPU  # Run on GPU
   }
 ]
 
 dynamic_batching {
-  max_queue_delay_microseconds: 500
+  preferred_batch_size: [8, 16, 32]  # Preferred batch sizes
+  max_queue_delay_microseconds: 4000  # Max 4ms delay for batching
 }
 
-instance_group [{ kind: KIND_GPU }]
+optimization {
+  input_pinned_memory {
+    enable: true
+  }
+  output_pinned_memory {
+    enable: true
+  }
+  execution_accelerators {
+    gpu_execution_accelerator : [
+      {
+        name : "tensorrt"
+        parameters { key: "precision_mode" value: "FP16" }  # Run inference in FP16 for better performance
+      }
+    ]
+  }
+}
