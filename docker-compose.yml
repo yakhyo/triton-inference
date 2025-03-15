@@ -1,12 +1,24 @@
-version: "3.8"
 services:
-  triton:
-    image: nvcr.io/nvidia/tritonserver:latest
-    restart: always
+  face-id:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tritonserver:latest
+    container_name: face-id
     ports:
-      - "8000:8000"
-      - "8001:8001"
-      - "8002:8002"
+      - "8000:8000" # HTTP endpoint
+      - "8001:8001" # gRPC endpoint
+      - "8002:8002" # Metrics endpoint
     volumes:
-      - ./models:/models
+      - ./models:/models # Optional: Mount models directory for easier updates
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
     command: ["tritonserver", "--model-repository=/models"]

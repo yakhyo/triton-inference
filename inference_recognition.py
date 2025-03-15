@@ -22,7 +22,6 @@ class TritonFaceEngine:
     def __init__(self, model_name="recognition"):
         """
         Initializes the Triton client for the face recognition model.
-
         Args:
             model_name (str): Triton model name.
         """
@@ -37,10 +36,8 @@ class TritonFaceEngine:
     def preprocess(self, image: np.ndarray) -> np.ndarray:
         """
         Preprocess the image: align, resize, normalize.
-
         Args:
             image (np.ndarray): Input image in BGR format.
-
         Returns:
             np.ndarray: Preprocessed image tensor for inference.
         """
@@ -54,11 +51,9 @@ class TritonFaceEngine:
     def get_embedding(self, image: np.ndarray, landmarks: np.ndarray) -> np.ndarray:
         """
         Extracts face embedding from an aligned image.
-
         Args:
             image (np.ndarray): Face image (BGR format).
             landmarks (np.ndarray): Facial landmarks (5 points for alignment).
-
         Returns:
             np.ndarray: 512-dimensional face embedding.
         """
@@ -89,7 +84,6 @@ def compare_faces(
 ) -> tuple:
     """
     Compares two face images and determines if they belong to the same person.
-
     Args:
         model (TritonFaceEngine): The face recognition model instance.
         img1 (np.ndarray): First face image (BGR format).
@@ -97,7 +91,6 @@ def compare_faces(
         img2 (np.ndarray): Second face image (BGR format).
         landmarks2 (np.ndarray): Facial landmarks for img2.
         threshold (float): Similarity threshold for face matching.
-
     Returns:
         tuple[float, bool]: Similarity score and match result (True/False).
     """

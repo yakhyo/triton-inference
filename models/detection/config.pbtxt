@@ -45,12 +45,4 @@ optimization {
   output_pinned_memory {
     enable: true
   }
-  execution_accelerators {
-    gpu_execution_accelerator : [
-      {
-        name : "tensorrt"
-        parameters { key: "precision_mode" value: "FP16" }  # Run inference in FP16 for better performance
-      }
-    ]
-  }
 }

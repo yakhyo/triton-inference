@@ -1,20 +1,11 @@
 # Use NVIDIA Triton Server as the base image
 FROM nvcr.io/nvidia/tritonserver:24.01-py3
 
-# Set working directory
+# Set working directory (optional)
 WORKDIR /workspace
 
-# Copy the model repository
+# Copy the model repository into the container
 COPY models /models
 
-# Copy Python inference scripts and requirements
-COPY trt_detection.py /workspace/trt_detection.py
-COPY trt_recognition.py /workspace/trt_recognition.py
-COPY requirements.txt /workspace/requirements.txt
-
-# Install Python dependencies (if needed)
-RUN apt-get update && apt-get install -y python3 python3-pip
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-# Start Triton Server and keep the container running
+# Start Triton Server and expose necessary ports
 CMD ["tritonserver", "--model-repository=/models"]
