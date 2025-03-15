@@ -1,3 +1,7 @@
+# Copyright 2025 Yakhyokhuja Valikhujaev
+# Author: Yakhyokhuja Valikhujaev
+# GitHub: https://github.com/yakhyo
+
 import cv2
 import numpy as np
 from pathlib import Path
@@ -12,7 +16,6 @@ from common import (
     generate_anchors,
     decode_landmarks
 )
-
 
 
 class TritonRetinaFace(object):
@@ -89,19 +92,19 @@ class TritonRetinaFace(object):
         try:
             inputs = httpclient.InferInput("input", input_tensor.shape, "FP32")
             inputs.set_data_from_numpy(input_tensor)
-            
+
             outputs = [
                 httpclient.InferRequestedOutput("loc"),
                 httpclient.InferRequestedOutput("conf"),
                 httpclient.InferRequestedOutput("landmarks")
             ]
-            
+
             response = self.client.infer(model_name="detection", inputs=[inputs], outputs=outputs)
-            
+
             loc = response.as_numpy("loc")
             conf = response.as_numpy("conf")
             landmarks = response.as_numpy("landmarks")
-            
+
             return [loc, conf, landmarks]
         except Exception as e:
             raise RuntimeError(f"Triton inference failed: {str(e)}")
