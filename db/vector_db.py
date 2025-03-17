@@ -37,7 +37,7 @@ class FaceVectorDB:
             return "Unknown", distances[0][0]
 
         face_id = str(indices[0][0])
-        return self.metadata.get(face_id, "Unknown"), distances[0][0]
+        return face_id, self.metadata.get(face_id, "Unknown"), distances[0][0]
 
     def save_db(self):
         """Save FAISS index and metadata."""

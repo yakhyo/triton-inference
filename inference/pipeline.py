@@ -1,6 +1,8 @@
 import numpy as np
-from .recognition import DetectionEngine
-from .detection import RecognitionEngine
+from .recognition import RecognitionEngine
+from .detection import DetectionEngine
+from .common import compute_similarity
+from db.vector_db import face_db
 
 
 class Pipeline:
@@ -36,7 +38,7 @@ class Pipeline:
             return []
 
         return [
-            {"bbox": list(map(int, box[:4])), "landmark": landmark.tolist()}
+            {"bbox": list(map(int, box[:4])), "landmark": landmark}
             for box, landmark in zip(boxes, landmarks)
         ]
 
@@ -56,7 +58,7 @@ class Pipeline:
         faces = self.detect_faces(image, max_num=1)
         return faces[0] if faces else None
 
-    def get_face_embeddings(self, image):
+    def get_faces_info(self, image):
         """
         Extract face embeddings for all detected faces.
 
@@ -83,9 +85,9 @@ class Pipeline:
             for face in faces
         ]
 
-    def get_single_face_embedding(self, image):
+    def get_single_face_info(self, image):
         """
-        Extract an embedding for a single detected face.
+        Extract an info for a single detected face.
 
         Args:
             image (numpy.ndarray): The input image.
@@ -101,20 +103,21 @@ class Pipeline:
         if not face:
             return None
 
+        embedding = self.face_recognizer.get_embedding(image, face["landmark"])
+
         return {
             "bbox": face["bbox"],
             "landmark": face["landmark"],
-            "embedding": self.face_recognizer.get_embedding(image, face["landmark"]),
+            "embedding": embedding,
         }
 
-    def recognize_faces(self, image, database):
+    def recognize_faces(self, image):
         """
         Recognize faces in an image by comparing embeddings with a face database.
 
         Args:
             image (numpy.ndarray): The input image.
-            database (list of dict): A list of known faces in the format:
-                [{"id": str, "name": str, "embedding": numpy.ndarray}, ...]
+            
 
         Returns:
             dict: A dictionary containing recognized faces with:
@@ -125,7 +128,7 @@ class Pipeline:
                 - similarity (float): Similarity score.
             Returns {"error": "No face detected"} if no face is found.
         """
-        detected_faces = self.get_face_embeddings(image)
+        detected_faces = self.get_faces_info(image)
         if "error" in detected_faces:
             return detected_faces
 
@@ -133,10 +136,10 @@ class Pipeline:
         for face in detected_faces:
             best_match = {"id": None, "name": "Unknown", "similarity": 0}
 
-            for entry in database:
-                similarity = self.compute_similarity(face["embedding"], entry["embedding"])
-                if similarity > self.similarity_threshold and similarity > best_match["similarity"]:
-                    best_match = {"id": entry["id"], "name": entry["name"], "similarity": similarity}
+            face_id, name, similarity = face_db.search_face(face["embedding"], self.similarity_threshold)
+            best_match["id"] = face_id
+            best_match["name"] = name
+            best_match["similarity"] = similarity
 
             face.update(
                 {
@@ -160,4 +163,4 @@ class Pipeline:
         Returns:
             float: The similarity score (1 means identical, 0 means completely different).
         """
-        return float(np.dot(emb1, emb2) / (np.linalg.norm(emb1) * np.linalg.norm(emb2)))
+        return compute_similarity(emb1, emb2)

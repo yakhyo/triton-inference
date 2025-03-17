@@ -1,3 +1,7 @@
 tritonclient[http]
 opencv-python
 numpy
+faiss-cpu
+uvicorn
+fastapi
+python-multipart

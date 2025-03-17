@@ -67,6 +67,12 @@ class DetectionEngine(object):
         if not dynamic_size and input_size is not None:
             self._priors = generate_anchors(image_size=input_size)
 
+        # Warmp-up the model with a dummy input
+        dummy_input = np.zeros((1, 3, input_size[1], input_size[0]), dtype=np.float32)
+        print("Warming up the detection model...")
+        self.inference(dummy_input)
+        print("Detection model warmed up successfully.")
+
     def preprocess(self, image: np.ndarray, rgb_mean=(104, 117, 123)) -> np.ndarray:
         """Preprocess input image for model inference.
 
