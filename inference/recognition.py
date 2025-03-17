@@ -8,36 +8,41 @@ import onnxruntime as ort
 import tritonclient.http as httpclient
 from typing import Optional, Tuple
 
-import uniface
+from .common import compute_similarity, align_face
 
-from common import compute_similarity, face_alignment
+import warnings
+warnings.filterwarnings("ignore")
+
 
 TRITON_SERVER_URL = "localhost:8000"
 
-class TritonFaceEngine:
+
+class RecognitionEngine:
     """
     Face recognition model using Triton Inference Server.
     """
 
-    def __init__(self, model_name="recognition"):
+    def __init__(self):
         """
         Initializes the Triton client for the face recognition model.
+
         Args:
             model_name (str): Triton model name.
         """
         self.client = httpclient.InferenceServerClient(url=TRITON_SERVER_URL)
-        self.model_name = model_name
         self.input_size = (112, 112)  # Expected input size for face recognition
 
         # Verify if model is ready
-        if not self.client.is_model_ready(self.model_name):
-            raise RuntimeError(f"Triton model '{self.model_name}' is not ready!")
+        if not self.client.is_model_ready("recognition"):
+            raise RuntimeError(f"Triton model recognition is not ready!")
 
     def preprocess(self, image: np.ndarray) -> np.ndarray:
         """
         Preprocess the image: align, resize, normalize.
+
         Args:
             image (np.ndarray): Input image in BGR format.
+
         Returns:
             np.ndarray: Preprocessed image tensor for inference.
         """
@@ -51,13 +56,15 @@ class TritonFaceEngine:
     def get_embedding(self, image: np.ndarray, landmarks: np.ndarray) -> np.ndarray:
         """
         Extracts face embedding from an aligned image.
+
         Args:
             image (np.ndarray): Face image (BGR format).
             landmarks (np.ndarray): Facial landmarks (5 points for alignment).
+
         Returns:
             np.ndarray: 512-dimensional face embedding.
         """
-        aligned_face = face_alignment(image, landmarks)  # Align face
+        aligned_face = align_face(image, landmarks)  # Align face
         input_tensor = self.preprocess(aligned_face)  # Convert to tensor
 
         # Create Triton input tensor
@@ -68,14 +75,15 @@ class TritonFaceEngine:
         outputs = [httpclient.InferRequestedOutput("output")]
 
         # Perform inference
-        response = self.client.infer(model_name=self.model_name, inputs=[inputs], outputs=outputs)
+        response = self.client.infer(model_name="recognition", inputs=[inputs], outputs=outputs)
 
         # Retrieve embeddings
         embedding = response.as_numpy("output")
         return embedding.flatten()  # Return as a 1D vector
 
+
 def compare_faces(
-        model: TritonFaceEngine,
+        model: RecognitionEngine,
         img1: np.ndarray,
         landmarks1: np.ndarray,
         img2: np.ndarray,
@@ -84,6 +92,7 @@ def compare_faces(
 ) -> tuple:
     """
     Compares two face images and determines if they belong to the same person.
+
     Args:
         model (TritonFaceEngine): The face recognition model instance.
         img1 (np.ndarray): First face image (BGR format).
@@ -91,6 +100,7 @@ def compare_faces(
         img2 (np.ndarray): Second face image (BGR format).
         landmarks2 (np.ndarray): Facial landmarks for img2.
         threshold (float): Similarity threshold for face matching.
+
     Returns:
         tuple[float, bool]: Similarity score and match result (True/False).
     """
@@ -100,25 +110,25 @@ def compare_faces(
     is_match = similarity > threshold
     return similarity, is_match
 
+
 # Example usage
 if __name__ == "__main__":
-    import uniface
-    import warnings
-    warnings.filterwarnings("ignore")
+    from .detection import DetectionEngine
+
+    face_detector = DetectionEngine(conf_thresh=0.45)
 
     # Initialize face detection and recognition models
-    uniface_inference = uniface.RetinaFace(model="retinaface_mnet_v2", conf_thresh=0.45)
-    face_recognizer = TritonFaceEngine(model_name="recognition")
+    face_recognizer = RecognitionEngine()
 
     # Load images
-    img1 = cv2.imread("assets/faces/1_01.jpg")
-    img2 = cv2.imread("assets/faces/1_02.jpg")
+    img1 = cv2.imread("assets/faces/1_02.jpg")
+    img2 = cv2.imread("assets/faces/2_02.jpg")
 
     # Detect faces and get landmarks
-    boxes, landmarks = uniface_inference.detect(img1)
+    boxes, landmarks = face_detector.detect(img1)
     landmarks1 = landmarks[0]  # Get first face landmarks
 
-    boxes, landmarks = uniface_inference.detect(img2)
+    boxes, landmarks = face_detector.detect(img2)
     landmarks2 = landmarks[0]  # Get first face landmarks
 
     # Compare two face images

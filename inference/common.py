@@ -214,7 +214,7 @@ def estimate_norm(landmark: np.ndarray, image_size: int = 112) -> np.ndarray:
     return matrix
 
 
-def face_alignment(image: np.ndarray, landmark: np.ndarray, image_size: int = 112) -> np.ndarray:
+def align_face(image: np.ndarray, landmark: np.ndarray, image_size: int = 112) -> np.ndarray:
     """
     Align the face in the input image based on the given facial landmarks.
 

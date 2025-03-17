@@ -1,0 +1,55 @@
+import faiss
+import numpy as np
+import json
+import os
+
+DB_PATH = "db/face_index.faiss"
+METADATA_PATH = "db/face_metadata.json"
+N_DIMENSIONS = 512  # Face embedding size
+
+
+class FaceVectorDB:
+    def __init__(self):
+        """Initialize FAISS vector database and metadata."""
+        self.index = faiss.IndexFlatL2(N_DIMENSIONS)  # L2 distance for similarity
+        self.metadata = {}
+
+        if os.path.exists(DB_PATH):
+            self.load_db()
+
+    def add_face(self, embedding, name):
+        """Add a new face embedding."""
+        embedding = np.array([embedding], dtype=np.float32)
+        self.index.add(embedding)
+        face_id = str(self.index.ntotal - 1)  # FAISS index starts at 0
+        self.metadata[face_id] = name
+        self.save_db()
+
+    def search_face(self, embedding, threshold=0.5):
+        """Search for a face embedding in the database."""
+        if self.index.ntotal == 0:
+            return "Unknown", 1.0  # No faces in DB
+
+        embedding = np.array([embedding], dtype=np.float32)
+        distances, indices = self.index.search(embedding, 1)
+
+        if distances[0][0] > threshold:
+            return "Unknown", distances[0][0]
+
+        face_id = str(indices[0][0])
+        return self.metadata.get(face_id, "Unknown"), distances[0][0]
+
+    def save_db(self):
+        """Save FAISS index and metadata."""
+        faiss.write_index(self.index, DB_PATH)
+        with open(METADATA_PATH, "w") as f:
+            json.dump(self.metadata, f)
+
+    def load_db(self):
+        """Load FAISS index and metadata."""
+        self.index = faiss.read_index(DB_PATH)
+        with open(METADATA_PATH, "r") as f:
+            self.metadata = json.load(f)
+
+
+face_db = FaceVectorDB()

@@ -1,7 +1,3 @@
-# Copyright 2025 Yakhyokhuja Valikhujaev
-# Author: Yakhyokhuja Valikhujaev
-# GitHub: https://github.com/yakhyo
-
 import cv2
 import numpy as np
 from pathlib import Path
@@ -9,7 +5,7 @@ import tritonclient.http as httpclient
 
 from typing import Tuple, List, Optional, Literal
 
-from common import (
+from .common import (
     nms,
     resize_image,
     decode_boxes,
@@ -17,8 +13,10 @@ from common import (
     decode_landmarks
 )
 
+TRITON_SERVER_URL = "localhost:8000"
 
-class TritonRetinaFace(object):
+
+class DetectionEngine(object):
     """
     A modified RetinaFace class that sends inference requests to Triton Server.
     """
@@ -31,7 +29,6 @@ class TritonRetinaFace(object):
         post_nms_topk: int = 750,
         dynamic_size: Optional[bool] = False,
         input_size: Optional[Tuple[int, int]] = (640, 640),
-        triton_url: str = "localhost:8000"
     ) -> None:
         """
         A class for face detection using the Trition server.
@@ -43,7 +40,6 @@ class TritonRetinaFace(object):
             post_nms_topk (int): Maximum number of detections after NMS. Defaults to 750.
             dynamic_size (Optional[bool]): Whether to adjust anchor generation dynamically based on image size. Defaults to False.
             input_size (Optional[Tuple[int, int]]): Static input size for the model (width, height). Defaults to (640, 640).
-            triton_url (str): URL of the Triton Inference Server. Defaults to "localhost:8000".
 
         Attributes:
             conf_thresh (float): Confidence threshold for filtering detections.
@@ -61,17 +57,15 @@ class TritonRetinaFace(object):
         self.dynamic_size = dynamic_size
         self.input_size = input_size
 
-        self.client = httpclient.InferenceServerClient(url=triton_url)
+        self.client = httpclient.InferenceServerClient(url=TRITON_SERVER_URL)
+
+        # Verify if model is ready
+        if not self.client.is_model_ready("detection"):
+            raise RuntimeError(f"Triton model detection is not ready!")
 
         # Precompute anchors if using static size
         if not dynamic_size and input_size is not None:
             self._priors = generate_anchors(image_size=input_size)
-            try:
-                dummy_input = np.zeros((1, 3, input_size[1], input_size[0]), dtype=np.float32)
-                self.inference(dummy_input)
-                print("Model warmup completed successfully")
-            except Exception as e:
-                print(f"Warmup failed (this is often normal for first request): {e}")
 
     def preprocess(self, image: np.ndarray, rgb_mean=(104, 117, 123)) -> np.ndarray:
         """Preprocess input image for model inference.
@@ -89,25 +83,23 @@ class TritonRetinaFace(object):
         return image
 
     def inference(self, input_tensor: np.ndarray) -> List[np.ndarray]:
-        try:
-            inputs = httpclient.InferInput("input", input_tensor.shape, "FP32")
-            inputs.set_data_from_numpy(input_tensor)
+        """Perform inference using Triton Server."""
+        inputs = httpclient.InferInput("input", input_tensor.shape, "FP32")
+        inputs.set_data_from_numpy(input_tensor)
 
-            outputs = [
-                httpclient.InferRequestedOutput("loc"),
-                httpclient.InferRequestedOutput("conf"),
-                httpclient.InferRequestedOutput("landmarks")
-            ]
+        outputs = [
+            httpclient.InferRequestedOutput("loc"),
+            httpclient.InferRequestedOutput("conf"),
+            httpclient.InferRequestedOutput("landmarks")
+        ]
 
-            response = self.client.infer(model_name="detection", inputs=[inputs], outputs=outputs)
+        response = self.client.infer(model_name="detection", inputs=[inputs], outputs=outputs)
 
-            loc = response.as_numpy("loc")
-            conf = response.as_numpy("conf")
-            landmarks = response.as_numpy("landmarks")
+        loc = response.as_numpy("loc")
+        conf = response.as_numpy("conf")
+        landmarks = response.as_numpy("landmarks")
 
-            return [loc, conf, landmarks]
-        except Exception as e:
-            raise RuntimeError(f"Triton inference failed: {str(e)}")
+        return [loc, conf, landmarks]
 
     def detect(
         self,
@@ -241,14 +233,13 @@ class TritonRetinaFace(object):
 
 
 if __name__ == "__main__":
-
     image_path = "assets/test.jpg"
     image = cv2.imread(image_path)
 
     base_dir = Path(image_path).parent
     filename = Path(image_path).stem
 
-    face_detector = TritonRetinaFace()
+    face_detector = DetectionEngine()
     detections, landmarks = face_detector.detect(image)
 
     if len(detections) > 0:
