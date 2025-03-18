@@ -1,9 +1,11 @@
 import cv2
 import numpy as np
 from fastapi import FastAPI, File, UploadFile, Form
+from fastapi.encoders import jsonable_encoder
+
 
 from db.vector_db import face_db
-from inference.pipeline import Pipeline  # Updated pipeline import
+from inference.pipeline import Pipeline
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -20,10 +22,9 @@ async def root():
 @app.post("/detect/")
 async def detect_faces(file: UploadFile = File(...)):
     """Detects faces in an image and returns bounding boxes and landmarks."""
-    contents = await file.read()
-    img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
+    image = cv2.imdecode(np.frombuffer(await file.read(), np.uint8), cv2.IMREAD_COLOR)
+    faces = pipeline.detect_faces(image)
 
-    faces = pipeline.detect_faces(img)
     return {"faces": faces}
 
 
@@ -31,36 +32,31 @@ async def detect_faces(file: UploadFile = File(...)):
 async def recognize_faces(file: UploadFile = File(...)):
     """Recognizes faces in an image by comparing embeddings with FAISS DB."""
     contents = await file.read()
-    img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
+    image = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
 
-    recognized_faces = pipeline.recognize_faces(img)
-    return recognized_faces
+    recognized_faces = pipeline.recognize_faces(image)
+    return jsonable_encoder({"faces":recognized_faces})
 
 
 @app.post("/add_face/")
 async def add_face(file: UploadFile = File(...), name: str = Form(...)):
     """Adds a new face embedding to the FAISS database."""
     contents = await file.read()
-    img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
+    image = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
 
-    face_info = pipeline.get_single_face_info(img)
-    if not face_info:
-        return {"error": "No face detected"}
+    status = pipeline.add_face(image, name)
 
-    # Store embedding in FAISS
-    face_db.add_face(face_info["embedding"], name)
-
-    return {"message": f"Face '{name}' added to database"}
+    return status
 
 
 @app.post("/compare_faces/")
 async def compare_faces(file1: UploadFile = File(...), file2: UploadFile = File(...)):
     """Compares two faces to determine if they belong to the same person."""
-    img1 = cv2.imdecode(np.frombuffer(await file1.read(), np.uint8), cv2.IMREAD_COLOR)
-    img2 = cv2.imdecode(np.frombuffer(await file2.read(), np.uint8), cv2.IMREAD_COLOR)
+    image1 = cv2.imdecode(np.frombuffer(await file1.read(), np.uint8), cv2.IMREAD_COLOR)
+    image2 = cv2.imdecode(np.frombuffer(await file2.read(), np.uint8), cv2.IMREAD_COLOR)
 
-    face1 = pipeline.get_single_face_info(img1)
-    face2 = pipeline.get_single_face_info(img2)
+    face1 = pipeline.get_single_face_info(image1)
+    face2 = pipeline.get_single_face_info(image2)
 
     if not face1 or not face2:
         return {"error": "One or both faces not detected"}
@@ -77,3 +73,8 @@ async def compare_faces(file1: UploadFile = File(...), file2: UploadFile = File(
 
 # Run FastAPI app with:
 # uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8008)

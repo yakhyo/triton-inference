@@ -20,7 +20,7 @@ class Pipeline:
         self.face_detector = DetectionEngine(conf_thresh=conf_threshold)
         self.face_recognizer = RecognitionEngine()
 
-    def detect_faces(self, image, max_num=None):
+    def detect_faces(self, image, max_num=0):
         """
         Detect faces in an image.
 
@@ -38,7 +38,10 @@ class Pipeline:
             return []
 
         return [
-            {"bbox": list(map(int, box[:4])), "landmark": landmark}
+            {
+                "bbox": list(map(int, box[:4])),
+                "landmark": [[int(point) for point in lm] for lm in landmark]
+            }
             for box, landmark in zip(boxes, landmarks)
         ]
 
@@ -72,18 +75,20 @@ class Pipeline:
                 - embedding (numpy.ndarray): Face embedding.
             Returns {"error": "No face detected"} if no face is found.
         """
-        faces = self.detect_faces(image)
-        if not faces:
+        bboxes, landmarks = self.face_detector.detect(image)
+        if len(bboxes) == 0:
             return {"error": "No face detected"}
 
-        return [
-            {
-                "bbox": face["bbox"],
-                "landmark": face["landmark"],
-                "embedding": self.face_recognizer.get_embedding(image, face["landmark"]),
-            }
-            for face in faces
-        ]
+        faces_info = []
+        for bbox, landmark in zip(bboxes, landmarks):
+            emebdding = self.face_recognizer.get_embedding(image, landmark)
+            faces_info.append({
+                "bbox": bbox,
+                "landmark": landmark,
+                "embedding": emebdding,
+            })
+
+        return faces_info
 
     def get_single_face_info(self, image):
         """
@@ -99,16 +104,17 @@ class Pipeline:
                 - embedding (numpy.ndarray): Face embedding.
             Returns None if no face is detected.
         """
-        face = self.detect_single_face(image)
-        if not face:
+        bbox, landmark = self.face_detector.detect(image, max_num=1)
+        if len(bbox) == 0:
             return None
 
-        embedding = self.face_recognizer.get_embedding(image, face["landmark"])
+
+        embedding = self.face_recognizer.get_embedding(image, landmark[0])
 
         return {
-            "bbox": face["bbox"],
-            "landmark": face["landmark"],
-            "embedding": embedding,
+            "bbox": bbox[0],
+            "landmark": landmark[0],
+            "embedding": embedding.tolist(),
         }
 
     def recognize_faces(self, image):
@@ -117,7 +123,7 @@ class Pipeline:
 
         Args:
             image (numpy.ndarray): The input image.
-            
+
 
         Returns:
             dict: A dictionary containing recognized faces with:
@@ -134,23 +140,47 @@ class Pipeline:
 
         recognized_faces = []
         for face in detected_faces:
+            t = {}
             best_match = {"id": None, "name": "Unknown", "similarity": 0}
 
+            # Ensure embedding is a Python list before passing it to search_face
             face_id, name, similarity = face_db.search_face(face["embedding"], self.similarity_threshold)
+
             best_match["id"] = face_id
             best_match["name"] = name
-            best_match["similarity"] = similarity
+            best_match["similarity"] = float(similarity)
+            
+            t["name"] = name
+            t["face_id"] = face_id #TODO: fix and update it, think of how many logics should be inside pipeline
 
-            face.update(
-                {
-                    "face_id": best_match["id"],
-                    "name": best_match["name"],
-                    "similarity": best_match["similarity"]
-                }
-            )
-            recognized_faces.append(face)
+            # face.update(
+            #     {
+            #         # "face_id": best_match["id"],
+            #         "name": best_match["name"],
+            #         # "similarity": best_match["similarity"]
+            #     }
+            # )
+            recognized_faces.append(t)
 
-        return {"faces": recognized_faces}
+        return recognized_faces
+
+    def add_face(self, image, name):
+        """
+        Add a new face embedding to the face database.
+
+        Args:
+            image (numpy.ndarray): The input image.
+            name (str): Name of the person in the image.
+
+        Returns:
+            dict: A dictionary containing the status message.
+        """
+        face_info = self.get_single_face_info(image)
+        if not face_info:
+            return {"error": "No face detected"}
+
+        status = face_db.add_face(face_info["embedding"], name)
+        return status
 
     def compute_similarity(self, emb1, emb2):
         """
