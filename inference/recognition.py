@@ -121,8 +121,8 @@ if __name__ == "__main__":
     face_recognizer = RecognitionEngine()
 
     # Load images
-    img1 = cv2.imread("assets/faces/1_02.jpg")
-    img2 = cv2.imread("assets/faces/2_02.jpg")
+    img1 = cv2.imread("assets/faces/1_01.jpg")
+    img2 = cv2.imread("assets/faces/1_02.jpg")
 
     # Detect faces and get landmarks
     boxes, landmarks = face_detector.detect(img1)

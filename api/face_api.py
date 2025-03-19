@@ -1,4 +1,5 @@
 import cv2
+import time
 import numpy as np
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.encoders import jsonable_encoder
@@ -33,18 +34,25 @@ async def recognize_faces(file: UploadFile = File(...)):
     """Recognizes faces in an image by comparing embeddings with FAISS DB."""
     contents = await file.read()
     image = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
-
+    st = time.time()
     recognized_faces = pipeline.recognize_faces(image)
-    return jsonable_encoder({"faces":recognized_faces})
+    print("Number of faces recognized:", len(recognized_faces))
+    print(f"Time taken: {time.time() - st:.3f} seconds")
+    return jsonable_encoder({"faces": recognized_faces})
 
 
 @app.post("/add_face/")
-async def add_face(file: UploadFile = File(...), name: str = Form(...)):
+async def add_face(
+    file: UploadFile = File(...),
+    name: str = Form(...),
+    user_id: str = Form(...)
+):
     """Adds a new face embedding to the FAISS database."""
+
     contents = await file.read()
     image = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
 
-    status = pipeline.add_face(image, name)
+    status = pipeline.add_face(image, name, user_id)
 
     return status
 
@@ -70,9 +78,6 @@ async def compare_faces(file1: UploadFile = File(...), file2: UploadFile = File(
         "message": "Same person" if is_match else "Different person",
     }
 
-
-# Run FastAPI app with:
-# uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 
 if __name__ == "__main__":
     import uvicorn
