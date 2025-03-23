@@ -1,11 +1,13 @@
 import numpy as np
+from celery import Task
+
 from .recognition import RecognitionEngine
 from .detection import DetectionEngine
 from .common import compute_similarity
 from db.vector_db import face_db
 
 
-class Pipeline:
+class Pipeline(Task):
     def __init__(self, conf_threshold=0.45, similarity_threshold=0.35) -> None:
         """
         Initializes the Pipeline with face detection and recognition models.
@@ -140,7 +142,10 @@ class Pipeline:
         recognized_faces = []
         for face in detected_faces:
             # Default face structure
+            bbox, conf = face["bbox"][:4], face["bbox"][4]
             _face = {
+                "bbox": list(map(int, bbox)),
+                "confidence": float(conf),
                 "face_id": None,
                 "user_id": None,
                 "name": "Unknown",
@@ -178,7 +183,7 @@ class Pipeline:
             return {"error": "No face detected"}
 
         status = face_db.add_face(face_info["embedding"], name, user_id)
-        
+
         return status
 
     def compute_similarity(self, emb1, emb2):
