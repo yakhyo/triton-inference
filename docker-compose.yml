@@ -2,9 +2,9 @@ services:
   face-id:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.triton
     image: tritonserver:latest
-    container_name: face-id
+    container_name: triton-server
     ports:
       - "8000:8000" # HTTP endpoint
       - "8001:8001" # gRPC endpoint

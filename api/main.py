@@ -5,8 +5,7 @@ from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.encoders import jsonable_encoder
 
 
-from db.vector_db import face_db
-from inference.pipeline import Pipeline
+from .inference.pipeline import Pipeline
 
 # Initialize FastAPI app
 app = FastAPI()

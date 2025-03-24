@@ -1,25 +1,25 @@
+import os
+import json
 import faiss
 import numpy as np
-import json
-import os
-
-DB_PATH = "db/face_index.faiss"
-METADATA_PATH = "db/face_metadata.json"
-N_DIMENSIONS = 512  # Face embedding size
 
 
-class FaceVectorDB:
-    def __init__(self):
+class VectorDB:
+    def __init__(self, db_path, metadata_path, n_dimensions=512):
         """Initialize FAISS vector database and metadata."""
-        self.index = faiss.IndexFlatIP(N_DIMENSIONS)
+        self.db_path = db_path
+        self.metadata_path = metadata_path
+        self.n_dimensions = n_dimensions
+
+        self.index = faiss.IndexFlatIP(self.n_dimensions)
         self.metadata = {}
 
-        if os.path.exists(DB_PATH):
+        if os.path.exists(self.db_path):
             self.load_db()
 
     def add_face(self, embedding, name, user_id):
         """Add a new face embedding and return a structured response with error handling."""
-        if embedding is None or not isinstance(embedding, (list, np.ndarray)) or len(embedding) != N_DIMENSIONS:
+        if embedding is None or not isinstance(embedding, (list, np.ndarray)) or len(embedding) != self.n_dimensions:
             return {
                 "success": False,
                 "message": "Invalid face embedding. Ensure the image contains a detectable face."
@@ -98,17 +98,14 @@ class FaceVectorDB:
 
     def save_db(self):
         """Save FAISS index and metadata."""
-        faiss.write_index(self.index, DB_PATH)
-        with open(METADATA_PATH, "w") as f:
+        faiss.write_index(self.index, self.db_path)
+        with open(self.metadata_path, "w") as f:
             json.dump(self.metadata, f)
 
     def load_db(self):
         """Load FAISS index and metadata."""
-        if os.path.exists(DB_PATH):
-            self.index = faiss.read_index(DB_PATH)
-        if os.path.exists(METADATA_PATH):
-            with open(METADATA_PATH, "r") as f:
+        if os.path.exists(self.db_path):
+            self.index = faiss.read_index(self.db_path)
+        if os.path.exists(self.metadata_path):
+            with open(self.metadata_path, "r") as f:
                 self.metadata = json.load(f)
-
-
-face_db = FaceVectorDB()

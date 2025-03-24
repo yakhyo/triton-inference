@@ -87,3 +87,8 @@ async def get_status(task_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching task status: {e}")
+    
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8008)

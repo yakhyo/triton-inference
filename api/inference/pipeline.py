@@ -4,7 +4,15 @@ from celery import Task
 from .recognition import RecognitionEngine
 from .detection import DetectionEngine
 from .common import compute_similarity
-from db.vector_db import face_db
+from api.db.vector_db import VectorDB
+
+
+db_path = "db/face_index.faiss"
+metadata_path = "db/face_metadata.json"
+n_dimensions = 512  # Face embedding size
+
+
+db_instance = VectorDB(db_path=db_path, metadata_path=metadata_path, n_dimensions=n_dimensions)
 
 
 class Pipeline(Task):
@@ -153,7 +161,7 @@ class Pipeline(Task):
             }
 
             # Ensure embedding is a Python list before passing it to search_face
-            result = face_db.search_face(face["embedding"], self.similarity_threshold)
+            result = db_instance.search_face(face["embedding"], self.similarity_threshold)
 
             # Update face details if a match is found
             if result["matched"]:
@@ -182,7 +190,7 @@ class Pipeline(Task):
         if not face_info:
             return {"error": "No face detected"}
 
-        status = face_db.add_face(face_info["embedding"], name, user_id)
+        status = db_instance.add_face(face_info["embedding"], name, user_id)
 
         return status
 
