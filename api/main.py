@@ -34,10 +34,7 @@ async def recognize_faces(file: UploadFile = File(...)):
     """Recognizes faces in an image by comparing embeddings with FAISS DB."""
     contents = await file.read()
     image = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
-    st = time.time()
     recognized_faces = pipeline.recognize_faces(image)
-    print("Number of faces recognized:", len(recognized_faces))
-    print(f"Time taken: {time.time() - st:.3f} seconds")
     return jsonable_encoder({"faces": recognized_faces})
 
 

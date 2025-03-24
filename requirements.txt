@@ -5,3 +5,4 @@ faiss-cpu
 uvicorn
 fastapi
 python-multipart
+celery
