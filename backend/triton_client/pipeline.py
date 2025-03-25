@@ -4,7 +4,7 @@ from celery import Task
 from .recognition import RecognitionEngine
 from .detection import DetectionEngine
 from .common import compute_similarity
-from api.db.vector_db import VectorDB
+from db.vector_db import VectorDB
 
 
 db_path = "db/face_index.faiss"

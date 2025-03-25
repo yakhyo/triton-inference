@@ -1,8 +1,9 @@
 import cv2
 import numpy as np
 from celery import exceptions
-from server import app
-from inference.pipeline import Pipeline
+
+from worker import app
+from triton_client.pipeline import Pipeline
 
 
 @app.task(ignore_result=False, bind=True, base=Pipeline, name="recognize_face_task")

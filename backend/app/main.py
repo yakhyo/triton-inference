@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.responses import JSONResponse
 from celery.result import AsyncResult
 
-from server.tasks import recognize, add_face
+from worker.tasks import recognize, add_face
 
 app = FastAPI()
 

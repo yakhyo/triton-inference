@@ -1,8 +1,9 @@
+
 services:
   face-id:
     build:
       context: .
-      dockerfile: Dockerfile.triton
+      dockerfile: Dockerfile
     image: tritonserver:latest
     container_name: triton-server
     ports:
@@ -22,3 +23,42 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
     command: ["tritonserver", "--model-repository=/models"]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: backend:latest
+    container_name: backend
+    command: >
+      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8008 &
+             celery -A worker worker --loglevel=INFO --pool=solo"
+    ports:
+      - "8008:8008"
+    depends_on:
+      - rabbitmq
+      - redis
+      - face-id
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    restart: unless-stopped
+    runtime: nvidia
+    volumes:
+      - ./backend:/app
+    working_dir: /app
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

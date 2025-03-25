@@ -13,7 +13,7 @@ from .common import (
     decode_landmarks
 )
 
-TRITON_SERVER_URL = "localhost:8000"
+TRITON_SERVER_URL = "face-id:8000"
 
 
 class DetectionEngine(object):

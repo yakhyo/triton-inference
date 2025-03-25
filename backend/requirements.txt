@@ -1,0 +1,11 @@
+tritonclient[http]
+onnxruntime-gpu
+opencv-python
+scikit-image
+numpy
+faiss-cpu
+uvicorn
+fastapi
+python-multipart
+celery[redis,rabbitmq]
+redis

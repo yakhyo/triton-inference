@@ -5,7 +5,7 @@ from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.encoders import jsonable_encoder
 
 
-from .inference.pipeline import Pipeline
+from triton_client.pipeline import Pipeline
 
 # Initialize FastAPI app
 app = FastAPI()
