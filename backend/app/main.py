@@ -21,7 +21,7 @@ async def recognize_faces(files: list[UploadFile] = File(...)):
                 tasks.append({
                     "filename": file.filename,
                     "task_id": task.id,
-                    "status": "PROCESSING",
+                    "status": "processing",
                     "url_result": f"/result/{task.id}",
                     "url_status": f"/status/{task.id}"
                 })
@@ -29,7 +29,7 @@ async def recognize_faces(files: list[UploadFile] = File(...)):
                 tasks.append({
                     "filename": file.filename,
                     "task_id": None,
-                    "status": "FAILED",
+                    "status": "failed",
                     "error": str(e)
                 })
         return JSONResponse(status_code=202, content=tasks)
@@ -48,7 +48,7 @@ async def add_face_api(
         task = add_face.delay(contents, name, user_id)
         return {
             "task_id": task.id,
-            "status": "PROCESSING",
+            "status": "processing",
             "url_result": f"/result/{task.id}",
             "url_status": f"/status/{task.id}"
         }

@@ -14,10 +14,10 @@ def recognize(self, file: bytes):
     try:
         image_buffer = np.frombuffer(file, np.uint8)
         image = cv2.imdecode(image_buffer, cv2.IMREAD_COLOR)
-        status = self.recognize_faces(image)
+        detections = self.recognize_faces(image)
         return {
             "status": "success",
-            "result": status
+            "result": detections
         }
     except Exception as e:
         try:
